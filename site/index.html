@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root{
-    /* UI 크롬은 그레이스케일, 색상은 차트(--c-*)에만 */
     --bg:#f6f7f8; --sidebar:#ffffff; --card:#ffffff; --fg:#111418; --muted:#f2f3f5;
     --muted-fg:#6b7280; --border:#e5e7eb; --primary:#18181b; --primary-fg:#ffffff;
     --ring:rgba(0,0,0,.14);
@@ -26,8 +25,8 @@
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Apple SD Gothic Neo",sans-serif;
     background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased;}
   a{color:inherit}
+  svg{display:block}
 
-  /* ---- app shell ---- */
   .shell{display:grid; grid-template-columns:236px 1fr; min-height:100vh}
   .sidebar{background:var(--sidebar); border-right:1px solid var(--border); padding:18px 14px;
     display:flex; flex-direction:column; gap:6px; position:sticky; top:0; height:100vh}
@@ -41,75 +40,76 @@
     background:transparent;color:var(--muted-fg);font-size:14px;padding:9px 10px;border-radius:9px;font-weight:500}
   .nav button:hover{background:var(--muted);color:var(--fg)}
   .nav button.active{background:var(--muted);color:var(--fg);font-weight:600}
-  .nav button .ico{width:17px;text-align:center;opacity:.9}
+  .nav button svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
   .side-foot{margin-top:auto;padding:10px 8px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted-fg)}
 
-  /* ---- main ---- */
   .main{padding:22px 26px 60px; max-width:1180px}
-  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
   .topbar h1{margin:0;font-size:19px;letter-spacing:-.3px}
   .topbar .sub{color:var(--muted-fg);font-size:12.5px;margin-top:3px}
   .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .badge{font-size:11.5px;color:var(--muted-fg);background:var(--muted);border:1px solid var(--border);
-    padding:5px 10px;border-radius:999px}
+    padding:6px 10px;border-radius:999px}
   .btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;text-decoration:none;
-    padding:7px 13px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--fg)}
-  .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+    padding:6px 13px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--fg)}
+  .seg{display:inline-flex;background:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px;gap:2px}
+  .seg button{border:none;background:transparent;color:var(--muted-fg);font-size:12px;font-weight:600;
+    padding:5px 11px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:16px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
-  .stat .k{font-size:12px;color:var(--muted-fg);display:flex;align-items:center;gap:6px}
+  .stat .k{font-size:12px;color:var(--muted-fg)}
   .stat .v{font-size:23px;font-weight:750;margin-top:7px;letter-spacing:-.4px}
   .stat .d{font-size:12px;margin-top:4px;color:var(--muted-fg)}
-  .up{color:var(--c-buybox)} .down{color:var(--c-sessions)}
-  .dot{width:8px;height:8px;border-radius:3px;display:inline-block}
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .chartcard h3{margin:0 0 2px;font-size:13.5px;font-weight:650}
+  .chartcard .cap{font-size:11.5px;color:var(--muted-fg);margin-bottom:12px}
+  .canwrap{position:relative;height:230px}
+  .canwrap.sm{height:200px}
+
+  .tablehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .pager{display:inline-flex;align-items:center;gap:8px}
+  .pager button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--card);
+    color:var(--fg);cursor:pointer;display:grid;place-items:center}
+  .pager button:disabled{opacity:.4;cursor:default}
+  .pager button svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .pager .mlabel{font-size:14px;font-weight:650;min-width:88px;text-align:center}
+  .msum{font-size:12px;color:var(--muted-fg)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted-fg);font-weight:600}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--muted)}
+  .tablewrap{overflow-x:auto}
+  .view{display:none} .view.active{display:block}
+
   @media (max-width:900px){
     .shell{grid-template-columns:1fr}
     .sidebar{position:sticky;top:0;z-index:5;height:auto;flex-direction:row;align-items:center;gap:10px;
       padding:10px 14px;border-right:none;border-bottom:1px solid var(--border);overflow-x:auto}
     .brand{padding:0;flex:0 0 auto} .brand b{display:none}
     .navlabel,.side-foot{display:none}
-    .nav{flex-direction:row;gap:6px}
-    .nav button{white-space:nowrap;padding:8px 12px}
+    .nav{flex-direction:row;gap:6px} .nav button{white-space:nowrap;padding:8px 12px}
     .main{padding:16px 16px 48px;max-width:none}
     .grid2{grid-template-columns:1fr}
   }
   @media (max-width:560px){
     .kpis{grid-template-columns:1fr 1fr;gap:10px}
-    .stat .v{font-size:20px}
-    .main{padding:14px 12px 44px}
-    .topbar h1{font-size:17px}
-    .canwrap{height:200px} .canwrap.sm{height:180px}
-    .seg button{padding:5px 9px;font-size:11px}
+    .stat .v{font-size:20px} .main{padding:14px 12px 44px} .topbar h1{font-size:17px}
+    .canwrap{height:200px} .canwrap.sm{height:180px} .seg button{padding:5px 9px;font-size:11px}
   }
-  .chartcard h3{margin:0 0 2px;font-size:13.5px;font-weight:650}
-  .chartcard .cap{font-size:11.5px;color:var(--muted-fg);margin-bottom:12px}
-  .cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
-  .seg{display:inline-flex;background:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px;gap:2px}
-  .seg button{border:none;background:transparent;color:var(--muted-fg);font-size:12px;font-weight:600;
-    padding:5px 12px;border-radius:999px;cursor:pointer}
-  .seg button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-  .canwrap{position:relative;height:230px}
-  .canwrap.sm{height:200px}
 
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
-  th:first-child,td:first-child{text-align:left}
-  th{color:var(--muted-fg);font-weight:600;position:sticky;top:0;background:var(--card)}
-  tbody tr:hover{background:var(--muted)}
-  .tablewrap{overflow-x:auto}
-  .view{display:none} .view.active{display:block}
-
-  /* ---- gate ---- */
   .overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:20}
   .gate{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:30px;width:330px;max-width:90vw;text-align:center}
   .gate .logo{width:40px;height:40px;border-radius:11px;margin:0 auto 14px;background:var(--primary);display:grid;place-items:center;color:var(--primary-fg);font-weight:800}
   .gate h2{margin:0 0 4px;font-size:17px} .gate p{color:var(--muted-fg);font-size:13px;margin:0 0 18px}
   .gate input{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:15px;outline:none}
   .gate input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--ring)}
-  .gate button{width:100%;margin-top:11px;padding:11px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:15px;font-weight:650;cursor:pointer}
+  .gate button{width:100%;margin-top:11px;padding:11px;border:none;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-size:15px;font-weight:650;cursor:pointer}
   .err{color:var(--c-sessions);font-size:13px;min-height:18px;margin-top:9px}
   #shell{display:none}
 </style>
@@ -132,62 +132,63 @@
     <div class="brand"><div class="logo">a</div><b>Amazon 대시보드</b></div>
     <div class="navlabel">메뉴</div>
     <div class="nav" id="nav">
-      <button data-view="overview" class="active"><span class="ico">▦</span> 개요</button>
-      <button data-view="traffic"><span class="ico">◔</span> 트래픽 · 전환</button>
-      <button data-view="daily"><span class="ico">▤</span> 날짜별 데이터</button>
+      <button data-view="overview" class="active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        개요</button>
+      <button data-view="traffic">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        트래픽 · 전환</button>
+      <button data-view="daily">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        날짜별 데이터</button>
     </div>
     <div class="side-foot" id="foot"></div>
   </aside>
 
   <main class="main">
     <div class="topbar">
-      <div>
-        <h1 id="viewTitle">개요</h1>
-        <div class="sub" id="sub"></div>
-      </div>
+      <div><h1 id="viewTitle">개요</h1><div class="sub" id="sub"></div></div>
       <div class="actions">
         <span class="badge" id="updated"></span>
+        <div class="seg" id="seg">
+          <button data-g="daily">일</button><button data-g="weekly">주</button>
+          <button data-g="monthly" class="on">월</button><button data-g="quarterly">분기</button>
+          <button data-g="yearly">년</button>
+        </div>
         <a class="btn" id="scLink" target="_blank" rel="noopener">셀러센트럴</a>
       </div>
     </div>
 
-    <!-- 개요 -->
     <section class="view active" data-view="overview">
-      <div class="kpis" id="kpis"></div>
+      <div class="kpis" id="kpisOv"></div>
       <div class="card chartcard">
-        <div class="cardhead">
-          <div><h3>매출 · 세션</h3><div class="cap" id="mainCap">상품매출(막대)과 세션(선)</div></div>
-          <div class="seg" id="seg">
-            <button data-g="daily">일</button><button data-g="weekly">주</button>
-            <button data-g="monthly" class="on">월</button><button data-g="quarterly">분기</button>
-            <button data-g="yearly">년</button>
-          </div>
-        </div>
+        <h3>매출 · 세션</h3><div class="cap" id="capMain"></div>
         <div class="canwrap"><canvas id="cMain"></canvas></div>
       </div>
     </section>
 
-    <!-- 트래픽 · 전환 (버이박스/전환율 분리) -->
     <section class="view" data-view="traffic">
+      <div class="kpis" id="kpisTr"></div>
       <div class="grid2">
-        <div class="card chartcard">
-          <h3>전환율</h3><div class="cap">Unit Session % — 세션 대비 구매 전환</div>
-          <div class="canwrap sm"><canvas id="cConv"></canvas></div>
-        </div>
-        <div class="card chartcard">
-          <h3>바이박스 점유율</h3><div class="cap">Buy Box % — 낮아지면 매출 직결</div>
-          <div class="canwrap sm"><canvas id="cBuybox"></canvas></div>
-        </div>
+        <div class="card chartcard"><h3>전환율</h3><div class="cap">Unit Session % — 세션 대비 구매 전환</div>
+          <div class="canwrap sm"><canvas id="cConv"></canvas></div></div>
+        <div class="card chartcard"><h3>바이박스 점유율</h3><div class="cap">Buy Box % — 낮아지면 매출 직결</div>
+          <div class="canwrap sm"><canvas id="cBuybox"></canvas></div></div>
       </div>
-      <div class="card chartcard" style="margin-top:12px">
-        <h3>페이지뷰 · 세션</h3><div class="cap">트래픽 유입 추이</div>
-        <div class="canwrap sm"><canvas id="cTraffic"></canvas></div>
-      </div>
+      <div class="card chartcard" style="margin-top:12px"><h3>페이지뷰 · 세션</h3><div class="cap">트래픽 유입 추이</div>
+        <div class="canwrap sm"><canvas id="cTraffic"></canvas></div></div>
     </section>
 
-    <!-- 날짜별 -->
     <section class="view" data-view="daily">
       <div class="card">
+        <div class="tablehead">
+          <div class="pager">
+            <button id="prevM"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+            <span class="mlabel" id="mlabel"></span>
+            <button id="nextM"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+          </div>
+          <div class="msum" id="msum"></div>
+        </div>
         <div class="tablewrap"><table>
           <thead><tr>
             <th>날짜</th><th>매출($)</th><th>주문</th><th>수량</th><th>페이지뷰</th>
@@ -200,7 +201,6 @@
 </div>
 
 <script>
-const DASHBOARD_URL = location.origin + location.pathname;
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function decrypt(enc, password){
   const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
@@ -210,60 +210,13 @@ async function decrypt(enc, password){
   return JSON.parse(new TextDecoder().decode(pt));
 }
 const money=n=>"$"+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const money0=n=>"$"+n.toLocaleString(undefined,{maximumFractionDigits:0});
 const int=n=>n.toLocaleString();
 const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 
-function chartDefaults(){
-  Chart.defaults.font.family="-apple-system,Inter,sans-serif";
-  Chart.defaults.color=css("--muted-fg");
-  Chart.defaults.plugins.legend.labels.boxWidth=10;
-  Chart.defaults.plugins.legend.labels.boxHeight=10;
-  Chart.defaults.plugins.legend.labels.usePointStyle=true;
-  Chart.defaults.plugins.tooltip.backgroundColor="#0b0d12";
-  Chart.defaults.plugins.tooltip.borderColor="rgba(255,255,255,.08)";
-  Chart.defaults.plugins.tooltip.borderWidth=1;
-  Chart.defaults.plugins.tooltip.padding=10;
-  Chart.defaults.plugins.tooltip.cornerRadius=8;
-  Chart.defaults.plugins.tooltip.titleColor="#fff";
-  Chart.defaults.plugins.tooltip.bodyColor="#cbd3e1";
-  Chart.defaults.maintainAspectRatio=false;
-}
-const grid=()=>({color:css("--border"),drawTicks:false});
-const baseScales=()=>({x:{grid:{display:false},ticks:{color:css("--muted-fg")}}});
+let S=[], curGran="monthly", months=[], monthIdx=0;
 
-function render(data){
-  const s=data.series;
-  document.getElementById("sub").textContent=`${data.tz} 기준 · ${s.length}일 · Amazon US`;
-  document.getElementById("updated").textContent="업데이트 "+data.generated;
-  document.getElementById("foot").innerHTML=`최근 갱신<br>${data.generated}`;
-  document.getElementById("scLink").href="https://sellercentral.amazon.com/business-reports";
-
-  const last=s[s.length-1], d7=s.slice(-7);
-  const sum=(a,f)=>a.reduce((x,r)=>x+r[f],0), avg=(a,f)=>a.length?sum(a,f)/a.length:0;
-  const kpis=[
-    ["최근일 매출", money(last.sales), last.date.slice(5), "--c-sales"],
-    ["최근일 주문", int(last.items)+"건", last.units+"개 판매", "--c-conv"],
-    ["최근일 전환율", last.conv.toFixed(1)+"%", "세션 "+int(last.sessions), "--c-conv"],
-    ["최근일 바이박스", last.buybox.toFixed(1)+"%", "", "--c-buybox"],
-    ["최근 7일 매출", money(sum(d7,"sales")), "평균 "+money(avg(d7,"sales")), "--c-sales"],
-    ["최근 7일 세션", int(sum(d7,"sessions")), "평균 전환 "+avg(d7,"conv").toFixed(1)+"%", "--c-sessions"],
-  ];
-  document.getElementById("kpis").innerHTML=kpis.map(([k,v,d])=>
-    `<div class="card stat"><div class="k">${k}</div>
-     <div class="v">${v}</div><div class="d">${d||"&nbsp;"}</div></div>`).join("");
-
-  document.getElementById("tbody").innerHTML=s.slice().reverse().map(r=>
-    `<tr><td>${r.date.slice(5)}</td><td>${money(r.sales)}</td><td>${int(r.items)}</td><td>${int(r.units)}</td>
-     <td>${int(r.pageViews)}</td><td>${int(r.sessions)}</td><td>${r.conv.toFixed(1)}</td>
-     <td>${r.buybox.toFixed(1)}</td><td>${int(r.refunded)}</td></tr>`).join("");
-
-  chartDefaults();
-  window.__S__=s;
-  buildView("overview");
-}
-
-// ---- 기간 집계(일/주/월/분기/년) ----
-let curGran="monthly";
+// ---- 기간 집계 ----
 function isoWeek(d){
   const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
   const day=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-day+3);
@@ -279,8 +232,8 @@ function bkey(ds,g){
   if(g==="quarterly")return `${y} Q${Math.floor(m/3)+1}`;
   return `${y}`;
 }
-function aggregate(series,g){
-  let src = g==="daily" ? series.slice(-90) : series;
+function aggregate(g){
+  const src = g==="daily" ? S.slice(-90) : S;
   const map=new Map();
   for(const r of src){
     const k=bkey(r.date,g);
@@ -291,47 +244,106 @@ function aggregate(series,g){
   }
   return [...map.values()].map(b=>({...b, conv:b.sessions?b.units/b.sessions*100:0, buybox:b.n?b.bbSum/b.n:0}));
 }
-const GLABEL={daily:"최근 90일 · 일별",weekly:"주별 누적",monthly:"월별 누적",quarterly:"분기별 누적",yearly:"연도별 누적"};
-function renderMain(g){
-  curGran=g;
-  const agg=aggregate(window.__S__,g);
-  const old=Chart.getChart("cMain"); if(old) old.destroy();
-  document.getElementById("mainCap").textContent=`상품매출(막대)·세션(선) — ${GLABEL[g]} · ${agg.length}구간`;
-  new Chart(cMain,{data:{labels:agg.map(b=>b.key),datasets:[
-    {type:"bar",label:"매출($)",data:agg.map(b=>b.sales),backgroundColor:css("--c-sales"),borderRadius:4,yAxisID:"y"},
-    {type:"line",label:"세션",data:agg.map(b=>b.sessions),borderColor:css("--c-sessions"),tension:.3,pointRadius:g==="daily"?1.5:2.5,yAxisID:"y1"}]},
-    options:{scales:{...baseScales(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
-      y1:{position:"right",grid:{display:false},ticks:{color:css("--muted-fg")}}}}});
-}
-document.getElementById("seg").addEventListener("click",e=>{
-  const b=e.target.closest("button"); if(!b)return;
-  document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));
-  renderMain(b.dataset.g);
-});
+const GLABEL={daily:"최근 90일 · 일별",weekly:"주별",monthly:"월별",quarterly:"분기별",yearly:"연도별"};
 
-// 차트는 해당 뷰가 처음 보일 때 생성(숨김 상태 폭 0 문제 방지)
-const BUILT={};
+// ---- 차트 정의 ----
+function chartDefaults(){
+  Chart.defaults.font.family="-apple-system,Inter,sans-serif";
+  Chart.defaults.color=css("--muted-fg");
+  Chart.defaults.plugins.legend.labels.usePointStyle=true;
+  Chart.defaults.plugins.legend.labels.boxWidth=8; Chart.defaults.plugins.legend.labels.boxHeight=8;
+  Chart.defaults.plugins.tooltip.backgroundColor="#0b0d12";
+  Chart.defaults.plugins.tooltip.padding=10; Chart.defaults.plugins.tooltip.cornerRadius=8;
+  Chart.defaults.plugins.tooltip.titleColor="#fff"; Chart.defaults.plugins.tooltip.bodyColor="#cbd3e1";
+  Chart.defaults.maintainAspectRatio=false;
+}
+const grid=()=>({color:css("--border"),drawTicks:false});
+const xs=()=>({grid:{display:false},ticks:{color:css("--muted-fg"),maxRotation:0,autoSkip:true,maxTicksLimit:12}});
+const pt=g=>g==="daily"?1.5:2.5;
+
+const CHARTS={
+  cMain:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
+    {type:"bar",label:"매출($)",data:a.map(b=>b.sales),backgroundColor:css("--c-sales"),borderRadius:4,yAxisID:"y"},
+    {type:"line",label:"세션",data:a.map(b=>b.sessions),borderColor:css("--c-sessions"),tension:.3,pointRadius:pt(curGran),yAxisID:"y1"}]},
+    options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
+      y1:{position:"right",grid:{display:false},ticks:{color:css("--muted-fg")}}}}}),
+  cConv:(a)=>({type:"line",data:{labels:a.map(b=>b.key),datasets:[
+    {label:"전환율 %",data:a.map(b=>b.conv),borderColor:css("--c-conv"),backgroundColor:css("--c-conv")+"22",fill:true,tension:.3,pointRadius:pt(curGran)}]},
+    options:{plugins:{legend:{display:false}},scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}}),
+  cBuybox:(a)=>({type:"line",data:{labels:a.map(b=>b.key),datasets:[
+    {label:"바이박스 %",data:a.map(b=>b.buybox),borderColor:css("--c-buybox"),backgroundColor:css("--c-buybox")+"22",fill:true,tension:.3,pointRadius:pt(curGran)}]},
+    options:{plugins:{legend:{display:false}},scales:{x:xs(),
+      y:{grid:grid(),suggestedMin:Math.max(0,Math.min(...a.map(b=>b.buybox))-2),suggestedMax:100,ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}}),
+  cTraffic:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
+    {type:"line",label:"페이지뷰",data:a.map(b=>b.pageViews),borderColor:css("--c-pv"),backgroundColor:css("--c-pv")+"22",fill:true,tension:.3,pointRadius:pt(curGran)},
+    {type:"line",label:"세션",data:a.map(b=>b.sessions),borderColor:css("--c-sessions"),tension:.3,pointRadius:pt(curGran)}]},
+    options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}}}}}),
+};
+function drawChart(id){
+  const a=aggregate(curGran);
+  const old=Chart.getChart(id); if(old) old.destroy();
+  new Chart(document.getElementById(id), CHARTS[id](a));
+  const cap=document.getElementById("capMain");
+  if(cap) cap.textContent=`상품매출(막대)·세션(선) — ${GLABEL[curGran]} · ${a.length}구간`;
+}
+const VIEW_CHARTS={overview:["cMain"],traffic:["cConv","cBuybox","cTraffic"],daily:[]};
 function buildView(v){
-  if(BUILT[v]) return; BUILT[v]=true;
-  const s=window.__S__, L=s.map(r=>r.date.slice(5));
-  if(v==="overview"){ renderMain(curGran); }
-  if(v==="traffic"){
-    new Chart(cConv,{type:"line",data:{labels:L,datasets:[
-      {label:"전환율 %",data:s.map(r=>r.conv),borderColor:css("--c-conv"),backgroundColor:css("--c-conv")+"22",
-       fill:true,tension:.35,pointRadius:2}]},
-      options:{plugins:{legend:{display:false}},scales:{...baseScales(),y:{grid:grid(),ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}});
-    new Chart(cBuybox,{type:"line",data:{labels:L,datasets:[
-      {label:"바이박스 %",data:s.map(r=>r.buybox),borderColor:css("--c-buybox"),backgroundColor:css("--c-buybox")+"22",
-       fill:true,tension:.35,pointRadius:2}]},
-      options:{plugins:{legend:{display:false}},scales:{...baseScales(),
-        y:{grid:grid(),suggestedMin:Math.max(0,Math.min(...s.map(r=>r.buybox))-2),suggestedMax:100,ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}});
-    new Chart(cTraffic,{data:{labels:L,datasets:[
-      {type:"line",label:"페이지뷰",data:s.map(r=>r.pageViews),borderColor:css("--c-pv"),backgroundColor:css("--c-pv")+"22",fill:true,tension:.35,pointRadius:2},
-      {type:"line",label:"세션",data:s.map(r=>r.sessions),borderColor:css("--c-sessions"),tension:.35,pointRadius:2}]},
-      options:{scales:{...baseScales(),y:{grid:grid(),ticks:{color:css("--muted-fg")}}}}});
-  }
+  VIEW_CHARTS[v].forEach(id=>{ if(!Chart.getChart(id)) drawChart(id); });
+  if(v==="daily") renderMonth();
 }
 
+// ---- KPI ----
+const sum=(a,f)=>a.reduce((x,r)=>x+r[f],0), avg=(a,f)=>a.length?sum(a,f)/a.length:0;
+function kpiCards(el, arr){
+  document.getElementById(el).innerHTML=arr.map(([k,v,d])=>
+    `<div class="card stat"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d||"&nbsp;"}</div></div>`).join("");
+}
+function renderKPIs(){
+  const last=S[S.length-1], d7=S.slice(-7);
+  kpiCards("kpisOv",[
+    ["최근일 매출", money(last.sales), last.date.slice(5)],
+    ["최근일 주문", int(last.items)+"건", last.units+"개 판매"],
+    ["최근 7일 매출", money(sum(d7,"sales")), "평균 "+money(avg(d7,"sales"))],
+    ["최근 7일 세션", int(sum(d7,"sessions")), "평균 전환 "+avg(d7,"conv").toFixed(1)+"%"],
+  ]);
+  const wConv=sum(d7,"units")/(sum(d7,"sessions")||1)*100;
+  kpiCards("kpisTr",[
+    ["최근일 전환율", last.conv.toFixed(1)+"%", "세션 "+int(last.sessions)],
+    ["최근일 바이박스", last.buybox.toFixed(1)+"%", ""],
+    ["7일 평균 전환율", wConv.toFixed(1)+"%", "누적 세션 "+int(sum(d7,"sessions"))],
+    ["7일 평균 바이박스", avg(d7,"buybox").toFixed(1)+"%", ""],
+  ]);
+}
+
+// ---- 날짜별(월 페이지네이션) ----
+function renderMonth(){
+  const m=months[monthIdx];
+  document.getElementById("mlabel").textContent=m;
+  document.getElementById("prevM").disabled = monthIdx<=0;
+  document.getElementById("nextM").disabled = monthIdx>=months.length-1;
+  const rows=S.filter(r=>r.date.startsWith(m)).slice().reverse();
+  const tot=f=>rows.reduce((x,r)=>x+r[f],0);
+  document.getElementById("msum").textContent=
+    `매출 ${money0(tot("sales"))} · 주문 ${int(tot("items"))}건 · 세션 ${int(tot("sessions"))} · 평균 전환 ${(tot("units")/(tot("sessions")||1)*100).toFixed(1)}%`;
+  document.getElementById("tbody").innerHTML=rows.map(r=>
+    `<tr><td>${r.date}</td><td>${money(r.sales)}</td><td>${int(r.items)}</td><td>${int(r.units)}</td>
+     <td>${int(r.pageViews)}</td><td>${int(r.sessions)}</td><td>${r.conv.toFixed(1)}</td>
+     <td>${r.buybox.toFixed(1)}</td><td>${int(r.refunded)}</td></tr>`).join("");
+}
+
+function render(data){
+  S=data.series; chartDefaults();
+  document.getElementById("sub").textContent=`${data.tz} 기준 · ${S.length}일 · Amazon US`;
+  document.getElementById("updated").textContent="업데이트 "+data.generated;
+  document.getElementById("foot").innerHTML=`최근 갱신<br>${data.generated}`;
+  document.getElementById("scLink").href="https://sellercentral.amazon.com/business-reports";
+  months=[...new Set(S.map(r=>r.date.slice(0,7)))].sort();
+  monthIdx=months.length-1;
+  renderKPIs();
+  buildView("overview");
+}
+
+// ---- 이벤트 ----
 document.getElementById("nav").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b)return;
   const v=b.dataset.view;
@@ -340,6 +352,14 @@ document.getElementById("nav").addEventListener("click",e=>{
   document.getElementById("viewTitle").textContent=b.textContent.trim();
   requestAnimationFrame(()=>buildView(v));
 });
+document.getElementById("seg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  curGran=b.dataset.g;
+  document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));
+  ["cMain","cConv","cBuybox","cTraffic"].forEach(id=>{ if(Chart.getChart(id)) drawChart(id); });
+});
+document.getElementById("prevM").addEventListener("click",()=>{ if(monthIdx>0){monthIdx--; renderMonth();} });
+document.getElementById("nextM").addEventListener("click",()=>{ if(monthIdx<months.length-1){monthIdx++; renderMonth();} });
 
 document.getElementById("gate").addEventListener("submit",async e=>{
   e.preventDefault();

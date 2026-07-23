@@ -29,6 +29,7 @@ PASSWORD = os.environ["DASHBOARD_PASSWORD"]
 TZ = ZoneInfo(os.environ.get("REPORT_TZ", "America/Los_Angeles"))
 PBKDF2_ITERS = 200_000
 DATA_JS = "site/data.js"
+HISTORY_START = os.environ.get("HISTORY_START", "2026-05-01")  # 이 날짜부터 누적(이전 0 데이터 제외)
 
 
 def read_latest():
@@ -90,7 +91,9 @@ def main():
     recent = series(read_latest())
     by_date = {r["date"]: r for r in load_history()}
     by_date.update({r["date"]: r for r in recent})  # 최근 값이 동일 날짜를 갱신
-    merged = sorted(by_date.values(), key=lambda x: x["date"])
+    # 누적 시작일 이전(0 데이터 구간) 제외
+    merged = sorted((r for r in by_date.values() if r["date"] >= HISTORY_START),
+                    key=lambda x: x["date"])
 
     payload = {
         "generated": dt.datetime.now(TZ).strftime("%Y-%m-%d %H:%M %Z"),
