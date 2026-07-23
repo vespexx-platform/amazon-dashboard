@@ -351,20 +351,22 @@ function kpiCards(el, arr){
   document.getElementById(el).innerHTML=arr.map(([k,v,d])=>
     `<div class="card stat"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d||"&nbsp;"}</div></div>`).join("");
 }
+const mmdd=ds=>(+ds.slice(5,7))+"/"+(+ds.slice(8,10));
 function renderKPIs(){
   const last=S[S.length-1], d7=S.slice(-7);
+  const dL=mmdd(last.date), rL=d7.length>1?mmdd(d7[0].date)+"~"+mmdd(last.date):dL;
   kpiCards("kpisOv",[
-    ["최근일 매출", money(last.sales), last.date.slice(5)],
-    ["최근일 주문", int(last.items)+"건", last.units+"개 판매"],
-    ["최근 7일 매출", money(sum(d7,"sales")), "평균 "+money(avg(d7,"sales"))],
-    ["최근 7일 세션", int(sum(d7,"sessions")), "평균 전환 "+avg(d7,"conv").toFixed(1)+"%"],
+    ["최근일 매출", money(last.sales), dL+" 기준"],
+    ["최근일 주문", int(last.items)+"건", dL+" · "+last.units+"개 판매"],
+    ["최근 7일 매출", money(sum(d7,"sales")), rL+" · 평균 "+money(avg(d7,"sales"))],
+    ["최근 7일 세션", int(sum(d7,"sessions")), rL+" · 평균 전환 "+avg(d7,"conv").toFixed(1)+"%"],
   ]);
   const wConv=sum(d7,"units")/(sum(d7,"sessions")||1)*100;
   kpiCards("kpisTr",[
-    ["최근일 전환율", last.conv.toFixed(1)+"%", "세션 "+int(last.sessions)],
-    ["최근일 바이박스", last.buybox.toFixed(1)+"%", ""],
-    ["7일 평균 전환율", wConv.toFixed(1)+"%", "누적 세션 "+int(sum(d7,"sessions"))],
-    ["7일 평균 바이박스", avg(d7,"buybox").toFixed(1)+"%", ""],
+    ["최근일 전환율", last.conv.toFixed(1)+"%", dL+" · 세션 "+int(last.sessions)],
+    ["최근일 바이박스", last.buybox.toFixed(1)+"%", dL+" 기준"],
+    ["7일 평균 전환율", wConv.toFixed(1)+"%", rL],
+    ["7일 평균 바이박스", avg(d7,"buybox").toFixed(1)+"%", rL],
   ]);
 }
 
@@ -386,7 +388,8 @@ function renderMonth(){
 
 function render(data){
   S=data.series; P=data.products||[]; INV=data.inventory||[]; chartDefaults();
-  document.getElementById("sub").textContent=`${data.tz} 기준 · ${S.length}일 · Amazon US`;
+  document.getElementById("sub").textContent=
+    `${data.tz} · ${mmdd(S[0].date)}~${mmdd(S[S.length-1].date)} · ${S.length}일 · Amazon US`;
   document.getElementById("updated").textContent="업데이트 "+data.generated;
   document.getElementById("foot").innerHTML=`최근 갱신<br>${data.generated}`;
   document.getElementById("scLink").href="https://sellercentral.amazon.com/business-reports";
