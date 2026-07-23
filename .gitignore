@@ -1,4 +1,4 @@
-site/data.js
+# site/data.js 는 암호화된 누적 히스토리 → 레포에 커밋(영속화). gitignore 하지 않음.
 __pycache__/
 *.pyc
 .env
