@@ -1,0 +1,4 @@
+site/data.js
+__pycache__/
+*.pyc
+.env

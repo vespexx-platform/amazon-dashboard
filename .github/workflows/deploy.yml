@@ -1,0 +1,41 @@
+name: Build & Deploy Dashboard
+
+on:
+  schedule:
+    # 09:05 UTC = 18:05 KST (일간 리포트/데이터 갱신 직후)
+    - cron: "5 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Build encrypted data.js
+        env:
+          MAKE_API_TOKEN: ${{ secrets.MAKE_API_TOKEN }}
+          MAKE_ZONE: ${{ secrets.MAKE_ZONE }}
+          MAKE_STORE_ID: ${{ secrets.MAKE_STORE_ID }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+        run: python build_data.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Amazon 판매 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b0d12; --card:#151922; --line:#232a36; --fg:#e7ebf2; --mut:#8b95a7;
+          --blue:#3b82f6; --red:#ef4444; --green:#22c55e; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f5f7fa; --card:#fff; --line:#e5e9f0; --fg:#1a2230; --mut:#5b6577; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--fg); }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 2px; }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:20px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card .k { color:var(--mut); font-size:12px; }
+  .card .v { font-size:22px; font-weight:700; margin-top:4px; }
+  .card .d { font-size:12px; margin-top:2px; }
+  .up { color:var(--green); } .down { color:var(--red); }
+  .chart { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .chart h3 { margin:0 0 8px; font-size:14px; font-weight:600; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line);
+          border-radius:12px; overflow:hidden; font-size:13px; }
+  th,td { padding:8px 10px; text-align:right; border-bottom:1px solid var(--line); }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:var(--mut); font-weight:600; background:transparent; }
+  tbody tr:last-child td { border-bottom:none; }
+  .overlay { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center;
+             justify-content:center; z-index:10; }
+  .gate { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:28px;
+          width:320px; max-width:90vw; text-align:center; }
+  .gate h2 { margin:0 0 4px; font-size:17px; }
+  .gate p { color:var(--mut); font-size:13px; margin:0 0 16px; }
+  .gate input { width:100%; padding:10px 12px; border-radius:9px; border:1px solid var(--line);
+                background:var(--bg); color:var(--fg); font-size:15px; }
+  .gate button { width:100%; margin-top:10px; padding:10px; border:none; border-radius:9px;
+                 background:var(--blue); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  .err { color:var(--red); font-size:13px; min-height:18px; margin-top:8px; }
+  #app { display:none; }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+  <form class="gate" id="gate">
+    <h2>🔒 Amazon 판매 대시보드</h2>
+    <p>비밀번호를 입력하세요</p>
+    <input type="password" id="pw" autocomplete="current-password" autofocus>
+    <button type="submit">열기</button>
+    <div class="err" id="err"></div>
+  </form>
+</div>
+
+<div class="wrap" id="app">
+  <h1>Amazon 판매 대시보드</h1>
+  <div class="sub" id="sub"></div>
+  <div class="cards" id="cards"></div>
+  <div class="chart"><h3>매출 · 세션</h3><canvas id="c1" height="110"></canvas></div>
+  <div class="chart"><h3>전환율 · 바이박스 (%)</h3><canvas id="c2" height="110"></canvas></div>
+  <table><thead><tr>
+    <th>날짜</th><th>매출($)</th><th>주문</th><th>페이지뷰</th><th>세션</th><th>전환%</th><th>바이박스%</th>
+  </tr></thead><tbody id="tbody"></tbody></table>
+</div>
+
+<script>
+const b64ToBytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function decrypt(enc, password) {
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(password),
+    "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt:b64ToBytes(enc.salt), iterations:enc.iters, hash:"SHA-256" },
+    km, { name:"AES-GCM", length:256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name:"AES-GCM", iv:b64ToBytes(enc.iv) },
+    key, b64ToBytes(enc.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+const won = n => "$" + n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const int = n => n.toLocaleString();
+
+function render(data) {
+  const s = data.series;
+  document.getElementById("sub").textContent =
+    `${data.tz} 기준 · 생성 ${data.generated} · ${s.length}일`;
+
+  const last = s[s.length-1];
+  const d7 = s.slice(-7);
+  const sum = (a,f) => a.reduce((x,r)=>x+r[f],0);
+  const avg = (a,f) => a.length ? sum(a,f)/a.length : 0;
+  const cards = [
+    ["최근일("+last.date.slice(5)+") 매출", won(last.sales)],
+    ["최근일 전환율", last.conv.toFixed(1)+"%"],
+    ["최근일 바이박스", last.buybox.toFixed(1)+"%"],
+    ["최근 7일 매출", won(sum(d7,"sales"))],
+    ["최근 7일 세션", int(sum(d7,"sessions"))],
+    ["최근 7일 평균 전환율", avg(d7,"conv").toFixed(1)+"%"],
+  ];
+  document.getElementById("cards").innerHTML = cards.map(([k,v]) =>
+    `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+
+  document.getElementById("tbody").innerHTML = s.map(r =>
+    `<tr><td>${r.date.slice(5)}</td><td>${won(r.sales)}</td><td>${int(r.units)}</td>
+     <td>${int(r.pageViews)}</td><td>${int(r.sessions)}</td>
+     <td>${r.conv.toFixed(1)}</td><td>${r.buybox.toFixed(1)}</td></tr>`).join("");
+
+  const labels = s.map(r => r.date.slice(5));
+  const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+  new Chart(document.getElementById("c1"), {
+    data: { labels, datasets: [
+      { type:"bar", label:"매출($)", data:s.map(r=>r.sales), backgroundColor:css("--blue")+"cc", yAxisID:"y" },
+      { type:"line", label:"세션", data:s.map(r=>r.sessions), borderColor:css("--red"), tension:.3, yAxisID:"y1" },
+    ]},
+    options: { plugins:{legend:{labels:{color:css("--fg")}}},
+      scales:{ y:{position:"left",ticks:{color:css("--mut")}}, y1:{position:"right",grid:{drawOnChartArea:false},ticks:{color:css("--mut")}},
+               x:{ticks:{color:css("--mut")}} } }
+  });
+  new Chart(document.getElementById("c2"), {
+    type:"line",
+    data: { labels, datasets: [
+      { label:"전환율%", data:s.map(r=>r.conv), borderColor:css("--blue"), tension:.3 },
+      { label:"바이박스%", data:s.map(r=>r.buybox), borderColor:css("--green"), tension:.3 },
+    ]},
+    options: { plugins:{legend:{labels:{color:css("--fg")}}},
+      scales:{ y:{ticks:{color:css("--mut")}}, x:{ticks:{color:css("--mut")}} } }
+  });
+}
+
+document.getElementById("gate").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const err = document.getElementById("err");
+  err.textContent = "";
+  try {
+    const data = await decrypt(window.__ENC__, document.getElementById("pw").value);
+    document.getElementById("overlay").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    render(data);
+  } catch (_) {
+    err.textContent = "비밀번호가 올바르지 않습니다";
+  }
+});
+</script>
+<script src="./data.js"></script>
+</body>
+</html>
