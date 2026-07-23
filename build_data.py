@@ -32,16 +32,43 @@ DATA_JS = "site/data.js"
 HISTORY_START = os.environ.get("HISTORY_START", "2026-05-01")  # 이 날짜부터 누적(이전 0 데이터 제외)
 
 
-def read_latest():
+def store_records():
     req = urllib.request.Request(
-        f"https://{MAKE_ZONE}/api/v2/data-stores/{STORE_ID}/data",
+        f"https://{MAKE_ZONE}/api/v2/data-stores/{STORE_ID}/data?pg%5Blimit%5D=50",
         headers={"Authorization": f"Token {MAKE_TOKEN}", "User-Agent": "amazon-dashboard/1.0"})
     with urllib.request.urlopen(req, timeout=60) as r:
         d = json.loads(r.read().decode())
-    for rec in d.get("records", []):
-        if rec.get("key") == "latest":
-            return json.loads(base64.b64decode(rec["data"]["blob"]).decode())
-    raise RuntimeError("'latest' 레코드 없음")
+    return {rec.get("key"): rec.get("data", {}).get("blob") for rec in d.get("records", [])}
+
+
+def inventory_from_tsv(tsv):
+    """FBA 재고 TSV → [{sku,asin,name,available,reserved,inbound,total}] (가용재고 오름차순)."""
+    if not tsv:
+        return []
+    lines = tsv.replace("\r", "").strip().split("\n")
+    if len(lines) < 2:
+        return []
+    hdr = lines[0].split("\t")
+
+    def qi(d, k):
+        try:
+            return int(float(d.get(k) or 0))
+        except (ValueError, TypeError):
+            return 0
+    out = []
+    for ln in lines[1:]:
+        d = dict(zip(hdr, ln.split("\t")))
+        out.append({
+            "sku": d.get("sku", ""), "asin": d.get("asin", ""),
+            "name": (d.get("product-name") or "")[:60],
+            "available": qi(d, "afn-fulfillable-quantity"),
+            "reserved": qi(d, "afn-reserved-quantity"),
+            "inbound": (qi(d, "afn-inbound-working-quantity") + qi(d, "afn-inbound-shipped-quantity")
+                        + qi(d, "afn-inbound-receiving-quantity")),
+            "total": qi(d, "afn-total-quantity"),
+        })
+    out.sort(key=lambda x: x["available"])
+    return out
 
 
 def series(report):
@@ -57,6 +84,25 @@ def series(report):
             "conv": round(t["unitSessionPercentage"], 2), "buybox": round(t["buyBoxPercentage"], 2),
             "feedback": t["feedbackReceived"], "negFeedback": t["negativeFeedbackReceived"],
         })
+    return out
+
+
+def products(report):
+    """ASIN별 상품 요약(리포트 기간 누적). 매출 내림차순."""
+    out = []
+    for a in report.get("salesAndTrafficByAsin", []):
+        s, t = a.get("salesByAsin", {}), a.get("trafficByAsin", {})
+        out.append({
+            "asin": a.get("childAsin") or a.get("parentAsin", ""),
+            "sku": a.get("sku", ""),
+            "sales": round(s.get("orderedProductSales", {}).get("amount", 0), 2),
+            "units": s.get("unitsOrdered", 0),
+            "sessions": t.get("sessions", 0),
+            "pageViews": t.get("pageViews", 0),
+            "conv": round(t.get("unitSessionPercentage", 0), 2),
+            "buybox": round(t.get("buyBoxPercentage", 0), 2),
+        })
+    out.sort(key=lambda x: x["sales"], reverse=True)
     return out
 
 
@@ -88,7 +134,11 @@ def load_history():
 
 
 def main():
-    recent = series(read_latest())
+    recs = store_records()
+    if not recs.get("latest"):
+        raise RuntimeError("'latest' 레코드 없음")
+    report = json.loads(base64.b64decode(recs["latest"]).decode())
+    recent = series(report)
     by_date = {r["date"]: r for r in load_history()}
     by_date.update({r["date"]: r for r in recent})  # 최근 값이 동일 날짜를 갱신
     # 누적 시작일 이전(0 데이터 구간) 제외
@@ -98,6 +148,8 @@ def main():
     payload = {
         "generated": dt.datetime.now(TZ).strftime("%Y-%m-%d %H:%M %Z"),
         "tz": "US 태평양시", "series": merged,
+        "products": products(report),
+        "inventory": inventory_from_tsv(recs.get("inventory")),
     }
     os.makedirs("site", exist_ok=True)
     with open(DATA_JS, "w") as f:

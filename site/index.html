@@ -85,6 +85,7 @@
   tbody tr:last-child td{border-bottom:none}
   tbody tr:hover{background:var(--muted)}
   .tablewrap{overflow-x:auto}
+  td.low{color:var(--c-sessions);font-weight:700}
   .view{display:none} .view.active{display:block}
 
   @media (max-width:900px){
@@ -138,6 +139,12 @@
       <button data-view="traffic">
         <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         트래픽 · 전환</button>
+      <button data-view="products">
+        <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        상품(ASIN)</button>
+      <button data-view="inventory">
+        <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        재고</button>
       <button data-view="daily">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         날짜별 데이터</button>
@@ -197,6 +204,27 @@
         </table></div>
       </div>
     </section>
+
+    <section class="view" data-view="products">
+      <div class="card">
+        <div class="tablehead"><div class="mlabel" style="min-width:0">상품별 요약 <span class="msum" id="prodNote"></span></div></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>ASIN</th><th>SKU</th><th>매출($)</th><th>판매</th><th>세션</th><th>페이지뷰</th><th>전환%</th><th>바이박스%</th></tr></thead>
+          <tbody id="prodBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <section class="view" data-view="inventory">
+      <div class="kpis" id="kpisInv"></div>
+      <div class="card">
+        <div class="tablehead"><div class="mlabel" style="min-width:0">FBA 재고 <span class="msum" id="invNote"></span></div></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>SKU</th><th>ASIN</th><th>상품명</th><th>가용</th><th>예약</th><th>입고중</th><th>총재고</th></tr></thead>
+          <tbody id="invBody"></tbody>
+        </table></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -214,7 +242,8 @@ const money0=n=>"$"+n.toLocaleString(undefined,{maximumFractionDigits:0});
 const int=n=>n.toLocaleString();
 const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 
-let S=[], curGran="monthly", months=[], monthIdx=0;
+let S=[], P=[], INV=[], curGran="monthly", months=[], monthIdx=0;
+const LOW_STOCK=10;
 
 // ---- 기간 집계 ----
 function isoWeek(d){
@@ -286,10 +315,34 @@ function drawChart(id){
   const cap=document.getElementById("capMain");
   if(cap) cap.textContent=`상품매출(막대)·세션(선) — ${GLABEL[curGran]} · ${a.length}구간`;
 }
-const VIEW_CHARTS={overview:["cMain"],traffic:["cConv","cBuybox","cTraffic"],daily:[]};
+const VIEW_CHARTS={overview:["cMain"],traffic:["cConv","cBuybox","cTraffic"],daily:[],products:[],inventory:[]};
 function buildView(v){
   VIEW_CHARTS[v].forEach(id=>{ if(!Chart.getChart(id)) drawChart(id); });
   if(v==="daily") renderMonth();
+  if(v==="products") renderProducts();
+  if(v==="inventory") renderInventory();
+}
+function renderProducts(){
+  document.getElementById("prodNote").textContent=`· 누적 기준 · ${P.length}개`;
+  document.getElementById("prodBody").innerHTML = P.length ? P.map(p=>
+    `<tr><td>${p.asin}</td><td>${p.sku||"-"}</td><td>${money(p.sales)}</td><td>${int(p.units)}</td>
+     <td>${int(p.sessions)}</td><td>${int(p.pageViews)}</td><td>${p.conv.toFixed(2)}</td><td>${p.buybox.toFixed(1)}</td></tr>`).join("")
+    : `<tr><td colspan="8" style="text-align:center;color:var(--muted-fg)">상품 데이터 없음</td></tr>`;
+}
+function renderInventory(){
+  const low=INV.filter(i=>i.available<LOW_STOCK).length, avail=INV.reduce((x,i)=>x+i.available,0);
+  kpiCards("kpisInv",[
+    ["SKU 수", int(INV.length)+"개", ""],
+    ["저재고 SKU", int(low)+"개", `가용 ${LOW_STOCK}개 미만`],
+    ["총 가용 재고", int(avail)+"개", ""],
+    ["입고중", int(INV.reduce((x,i)=>x+i.inbound,0))+"개", ""],
+  ]);
+  document.getElementById("invNote").textContent = INV.length ? `· ${INV.length} SKU · 가용 적은 순` : "";
+  document.getElementById("invBody").innerHTML = INV.length ? INV.map(i=>
+    `<tr><td>${i.sku}</td><td>${i.asin}</td><td>${i.name||"-"}</td>
+     <td${i.available<LOW_STOCK?' class="low"':''}>${int(i.available)}</td>
+     <td>${int(i.reserved)}</td><td>${int(i.inbound)}</td><td>${int(i.total)}</td></tr>`).join("")
+    : `<tr><td colspan="7" style="text-align:center;color:var(--muted-fg)">재고 데이터 없음 (FBA 재고 수집 대기중)</td></tr>`;
 }
 
 // ---- KPI ----
@@ -332,7 +385,7 @@ function renderMonth(){
 }
 
 function render(data){
-  S=data.series; chartDefaults();
+  S=data.series; P=data.products||[]; INV=data.inventory||[]; chartDefaults();
   document.getElementById("sub").textContent=`${data.tz} 기준 · ${S.length}일 · Amazon US`;
   document.getElementById("updated").textContent="업데이트 "+data.generated;
   document.getElementById("foot").innerHTML=`최근 갱신<br>${data.generated}`;
