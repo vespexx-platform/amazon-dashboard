@@ -68,6 +68,11 @@
     .nav{flex-direction:row;flex-wrap:wrap} .side-foot{display:none} .navlabel{display:none} }
   .chartcard h3{margin:0 0 2px;font-size:13.5px;font-weight:650}
   .chartcard .cap{font-size:11.5px;color:var(--muted-fg);margin-bottom:12px}
+  .cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .seg{display:inline-flex;background:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px;gap:2px}
+  .seg button{border:none;background:transparent;color:var(--muted-fg);font-size:12px;font-weight:600;
+    padding:5px 12px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
   .canwrap{position:relative;height:230px}
   .canwrap.sm{height:200px}
 
@@ -132,7 +137,14 @@
     <section class="view active" data-view="overview">
       <div class="kpis" id="kpis"></div>
       <div class="card chartcard">
-        <h3>매출 · 세션</h3><div class="cap">일별 상품매출(막대)과 세션(선)</div>
+        <div class="cardhead">
+          <div><h3>매출 · 세션</h3><div class="cap" id="mainCap">상품매출(막대)과 세션(선)</div></div>
+          <div class="seg" id="seg">
+            <button data-g="daily">일</button><button data-g="weekly">주</button>
+            <button data-g="monthly" class="on">월</button><button data-g="quarterly">분기</button>
+            <button data-g="yearly">년</button>
+          </div>
+        </div>
         <div class="canwrap"><canvas id="cMain"></canvas></div>
       </div>
     </section>
@@ -232,18 +244,59 @@ function render(data){
   buildView("overview");
 }
 
+// ---- 기간 집계(일/주/월/분기/년) ----
+let curGran="monthly";
+function isoWeek(d){
+  const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+  const day=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-day+3);
+  const first=new Date(Date.UTC(t.getUTCFullYear(),0,4));
+  const wk=1+Math.round(((t-first)/864e5-3+((first.getUTCDay()+6)%7))/7);
+  return t.getUTCFullYear()+"-W"+String(wk).padStart(2,"0");
+}
+function bkey(ds,g){
+  const d=new Date(ds+"T00:00:00Z"), y=d.getUTCFullYear(), m=d.getUTCMonth();
+  if(g==="daily")return ds.slice(5);
+  if(g==="weekly")return isoWeek(d);
+  if(g==="monthly")return `${y}-${String(m+1).padStart(2,"0")}`;
+  if(g==="quarterly")return `${y} Q${Math.floor(m/3)+1}`;
+  return `${y}`;
+}
+function aggregate(series,g){
+  let src = g==="daily" ? series.slice(-90) : series;
+  const map=new Map();
+  for(const r of src){
+    const k=bkey(r.date,g);
+    if(!map.has(k)) map.set(k,{key:k,sales:0,sessions:0,units:0,items:0,pageViews:0,bbSum:0,n:0});
+    const b=map.get(k);
+    b.sales+=r.sales; b.sessions+=r.sessions; b.units+=r.units; b.items+=r.items;
+    b.pageViews+=r.pageViews; b.bbSum+=r.buybox; b.n++;
+  }
+  return [...map.values()].map(b=>({...b, conv:b.sessions?b.units/b.sessions*100:0, buybox:b.n?b.bbSum/b.n:0}));
+}
+const GLABEL={daily:"최근 90일 · 일별",weekly:"주별 누적",monthly:"월별 누적",quarterly:"분기별 누적",yearly:"연도별 누적"};
+function renderMain(g){
+  curGran=g;
+  const agg=aggregate(window.__S__,g);
+  const old=Chart.getChart("cMain"); if(old) old.destroy();
+  document.getElementById("mainCap").textContent=`상품매출(막대)·세션(선) — ${GLABEL[g]} · ${agg.length}구간`;
+  new Chart(cMain,{data:{labels:agg.map(b=>b.key),datasets:[
+    {type:"bar",label:"매출($)",data:agg.map(b=>b.sales),backgroundColor:css("--c-sales"),borderRadius:4,yAxisID:"y"},
+    {type:"line",label:"세션",data:agg.map(b=>b.sessions),borderColor:css("--c-sessions"),tension:.3,pointRadius:g==="daily"?1.5:2.5,yAxisID:"y1"}]},
+    options:{scales:{...baseScales(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
+      y1:{position:"right",grid:{display:false},ticks:{color:css("--muted-fg")}}}}});
+}
+document.getElementById("seg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));
+  renderMain(b.dataset.g);
+});
+
 // 차트는 해당 뷰가 처음 보일 때 생성(숨김 상태 폭 0 문제 방지)
 const BUILT={};
 function buildView(v){
   if(BUILT[v]) return; BUILT[v]=true;
   const s=window.__S__, L=s.map(r=>r.date.slice(5));
-  if(v==="overview"){
-    new Chart(cMain,{data:{labels:L,datasets:[
-      {type:"bar",label:"매출($)",data:s.map(r=>r.sales),backgroundColor:css("--c-sales"),borderRadius:5,yAxisID:"y"},
-      {type:"line",label:"세션",data:s.map(r=>r.sessions),borderColor:css("--c-sessions"),backgroundColor:css("--c-sessions"),tension:.35,pointRadius:2,yAxisID:"y1"}]},
-      options:{scales:{...baseScales(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
-        y1:{position:"right",grid:{display:false},ticks:{color:css("--muted-fg")}}}}});
-  }
+  if(v==="overview"){ renderMain(curGran); }
   if(v==="traffic"){
     new Chart(cConv,{type:"line",data:{labels:L,datasets:[
       {label:"전환율 %",data:s.map(r=>r.conv),borderColor:css("--c-conv"),backgroundColor:css("--c-conv")+"22",
