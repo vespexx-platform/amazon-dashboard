@@ -3,7 +3,7 @@ name: Build & Deploy Dashboard
 on:
   schedule:
     # 09:05 UTC = 18:05 KST (일간 리포트/데이터 갱신 직후)
-    - cron: "5 9 * * *"
+    - cron: "22 9 * * *"
   workflow_dispatch: {}
 
 permissions:
