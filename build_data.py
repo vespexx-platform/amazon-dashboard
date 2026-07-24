@@ -13,6 +13,7 @@ site/data.js 로 저장(공개 Pages에 암호문만 노출) → 워크플로가
 
 import base64
 import datetime as dt
+import gzip
 import json
 import os
 import urllib.request
@@ -41,6 +42,42 @@ def store_records():
     return {rec.get("key"): rec.get("data", {}).get("blob") for rec in d.get("records", [])}
 
 
+def decode_blob(blob):
+    """Data Store blob → 텍스트. base64/gzip 여부와 BOM을 알아서 처리."""
+    if not blob:
+        return ""
+    if "\t" in blob[:2000]:
+        return blob  # 이미 평문 TSV
+    try:
+        raw = base64.b64decode(blob)
+    except Exception:
+        return blob
+    try:
+        return gzip.decompress(raw).decode("utf-8-sig", "replace")
+    except Exception:
+        return raw.decode("utf-8-sig", "replace")
+
+
+def listing_names(blob):
+    """리스팅 리포트 → {'sku:<sku>': 상품명, 'asin:<asin>': 상품명}."""
+    txt = decode_blob(blob)
+    lines = [l for l in txt.replace("\r", "").split("\n") if l.strip()]
+    if len(lines) < 2:
+        return {}
+    hdr = [h.strip().lstrip("﻿") for h in lines[0].split("\t")]
+    out = {}
+    for ln in lines[1:]:
+        d = dict(zip(hdr, ln.split("\t")))
+        name = (d.get("item-name") or "").strip()
+        if not name:
+            continue
+        if d.get("seller-sku"):
+            out["sku:" + d["seller-sku"]] = name
+        if d.get("asin1"):
+            out["asin:" + d["asin1"]] = name
+    return out
+
+
 def inventory_from_tsv(blob):
     """FBA 재고 리포트 → [{sku,asin,name,available,reserved,inbound,total}] (가용 오름차순).
 
@@ -52,12 +89,7 @@ def inventory_from_tsv(blob):
     """
     if not blob:
         return []
-    tsv = blob
-    if "\t" not in tsv[:2000]:  # base64로 저장된 경우 디코딩
-        try:
-            tsv = base64.b64decode(blob).decode("utf-8", "replace")
-        except Exception:
-            pass
+    tsv = decode_blob(blob)
     lines = [l for l in tsv.replace("\r", "").split("\n") if l.strip()]
     if len(lines) < 2:
         return []
@@ -178,6 +210,12 @@ def main():
         "products": products(report),
         "inventory": inventory_from_tsv(recs.get("inventory")),
     }
+    # 리스팅 리포트의 상품명을 재고/상품에 조인
+    names = listing_names(recs.get("listings"))
+    for i in payload["inventory"]:
+        i["name"] = i.get("name") or names.get("sku:" + i["sku"]) or names.get("asin:" + i["asin"]) or ""
+    for pr in payload["products"]:
+        pr["name"] = names.get("asin:" + pr["asin"], "")
     os.makedirs("site", exist_ok=True)
     with open(DATA_JS, "w") as f:
         f.write("window.__ENC__ = " + json.dumps(encrypt(json.dumps(payload, ensure_ascii=False))) + ";\n")

@@ -209,7 +209,7 @@
       <div class="card">
         <div class="tablehead"><div class="mlabel" style="min-width:0">상품별 요약 <span class="msum" id="prodNote"></span></div></div>
         <div class="tablewrap"><table>
-          <thead><tr><th>ASIN</th><th>SKU</th><th>매출($)</th><th>판매</th><th>세션</th><th>페이지뷰</th><th>전환%</th><th>바이박스%</th></tr></thead>
+          <thead><tr><th>ASIN</th><th>상품명</th><th>매출($)</th><th>판매</th><th>세션</th><th>페이지뷰</th><th>전환%</th><th>바이박스%</th></tr></thead>
           <tbody id="prodBody"></tbody>
         </table></div>
       </div>
@@ -325,7 +325,7 @@ function buildView(v){
 function renderProducts(){
   document.getElementById("prodNote").textContent=`· 누적 기준 · ${P.length}개`;
   document.getElementById("prodBody").innerHTML = P.length ? P.map(p=>
-    `<tr><td>${p.asin}</td><td>${p.sku||"-"}</td><td>${money(p.sales)}</td><td>${int(p.units)}</td>
+    `<tr><td>${p.asin}</td><td>${p.name||p.sku||"-"}</td><td>${money(p.sales)}</td><td>${int(p.units)}</td>
      <td>${int(p.sessions)}</td><td>${int(p.pageViews)}</td><td>${p.conv.toFixed(2)}</td><td>${p.buybox.toFixed(1)}</td></tr>`).join("")
     : `<tr><td colspan="8" style="text-align:center;color:var(--muted-fg)">상품 데이터 없음</td></tr>`;
 }
