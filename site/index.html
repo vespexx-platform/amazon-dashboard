@@ -409,7 +409,8 @@ document.getElementById("nav").addEventListener("click",e=>{
   document.querySelectorAll("#nav button").forEach(x=>x.classList.toggle("active",x===b));
   document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
   document.getElementById("viewTitle").textContent=b.textContent.trim();
-  requestAnimationFrame(()=>buildView(v));
+  // rAF는 탭이 백그라운드면 fire되지 않아 뷰가 비어 보일 수 있음 → setTimeout 사용
+  setTimeout(()=>buildView(v), 0);
 });
 document.getElementById("seg").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b)return;
@@ -424,13 +425,23 @@ document.getElementById("gate").addEventListener("submit",async e=>{
   e.preventDefault();
   const err=document.getElementById("err"); err.textContent="";
   try{
-    const data=await decrypt(window.__ENC__, document.getElementById("pw").value);
+    const enc=await (window.__ENC_READY__||Promise.resolve(window.__ENC__));
+    const data=await decrypt(enc, document.getElementById("pw").value);
     document.getElementById("overlay").style.display="none";
     document.getElementById("shell").style.display="grid";
     render(data);
   }catch(_){ err.textContent="비밀번호가 올바르지 않습니다"; }
 });
 </script>
-<script src="./data.js"></script>
+<script>
+// data.js는 매 로드마다 캐시버스터로 받아온다(브라우저 캐시로 옛 데이터가 보이는 문제 방지)
+window.__ENC_READY__ = new Promise((resolve, reject) => {
+  const s = document.createElement("script");
+  s.src = "./data.js?t=" + Date.now();
+  s.onload = () => resolve(window.__ENC__);
+  s.onerror = () => reject(new Error("data.js 로드 실패"));
+  document.head.appendChild(s);
+});
+</script>
 </body>
 </html>
