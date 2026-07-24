@@ -86,9 +86,9 @@
   tbody tr:hover{background:var(--muted)}
   .tablewrap{overflow-x:auto}
   td.low{color:var(--c-sessions);font-weight:700}
-  td.namecell{white-space:normal;min-width:200px;max-width:320px;line-height:1.35;
-    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  @media (max-width:560px){ td.namecell{min-width:150px;max-width:220px;-webkit-line-clamp:2} }
+  td.namecell{white-space:normal;min-width:200px;max-width:320px}
+  td.namecell>div{line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  @media (max-width:560px){ td.namecell{min-width:150px;max-width:220px} td.namecell>div{-webkit-line-clamp:2} }
   .view{display:none} .view.active{display:block}
 
   @media (max-width:900px){
@@ -328,7 +328,7 @@ function buildView(v){
 function renderProducts(){
   document.getElementById("prodNote").textContent=`· 누적 기준 · ${P.length}개`;
   document.getElementById("prodBody").innerHTML = P.length ? P.map(p=>
-    `<tr><td>${p.asin}</td><td class="namecell">${p.name||p.sku||"-"}</td><td>${money(p.sales)}</td><td>${int(p.units)}</td>
+    `<tr><td>${p.asin}</td><td class="namecell"><div>${p.name||p.sku||"-"}</div></td><td>${money(p.sales)}</td><td>${int(p.units)}</td>
      <td>${int(p.sessions)}</td><td>${int(p.pageViews)}</td><td>${p.conv.toFixed(2)}</td><td>${p.buybox.toFixed(1)}</td></tr>`).join("")
     : `<tr><td colspan="8" style="text-align:center;color:var(--muted-fg)">상품 데이터 없음</td></tr>`;
 }
@@ -345,7 +345,7 @@ function renderInventory(){
   ]);
   document.getElementById("invNote").textContent = INV.length ? `· ${INV.length} SKU · 가용 적은 순` : "";
   document.getElementById("invBody").innerHTML = INV.length ? INV.map(i=>
-    `<tr><td>${i.sku}</td><td>${i.asin}</td><td class="namecell">${i.name||"-"}</td>
+    `<tr><td>${i.sku}</td><td>${i.asin}</td><td class="namecell"><div>${i.name||"-"}</div></td>
      <td${i.available<LOW_STOCK?' class="low"':''}>${int(i.available)}</td>
      <td>${nz(i.reserved)}</td><td>${nz(i.inbound)}</td><td>${nz(i.total)}</td></tr>`).join("")
     : `<tr><td colspan="7" style="text-align:center;color:var(--muted-fg)">재고 데이터 없음 (FBA 재고 수집 대기중)</td></tr>`;
