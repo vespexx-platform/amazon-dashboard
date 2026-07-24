@@ -41,32 +41,59 @@ def store_records():
     return {rec.get("key"): rec.get("data", {}).get("blob") for rec in d.get("records", [])}
 
 
-def inventory_from_tsv(tsv):
-    """FBA 재고 TSV → [{sku,asin,name,available,reserved,inbound,total}] (가용재고 오름차순)."""
-    if not tsv:
+def inventory_from_tsv(blob):
+    """FBA 재고 리포트 → [{sku,asin,name,available,reserved,inbound,total}] (가용 오름차순).
+
+    두 리포트 포맷을 모두 지원:
+      - GET_AFN_INVENTORY_DATA          : seller-sku / asin / Quantity Available (가용만)
+      - GET_FBA_MYI_UNSUPPRESSED_...    : sku / asin / afn-* 상세(예약·입고중·총)
+    Data Store에 바이너리 버퍼로 저장되면 base64이므로 먼저 디코딩 시도.
+    상세 컬럼이 없으면 None → 대시보드에서 '-' 표시.
+    """
+    if not blob:
         return []
-    lines = tsv.replace("\r", "").strip().split("\n")
+    tsv = blob
+    if "\t" not in tsv[:2000]:  # base64로 저장된 경우 디코딩
+        try:
+            tsv = base64.b64decode(blob).decode("utf-8", "replace")
+        except Exception:
+            pass
+    lines = [l for l in tsv.replace("\r", "").split("\n") if l.strip()]
     if len(lines) < 2:
         return []
     hdr = lines[0].split("\t")
+    has_detail = "afn-fulfillable-quantity" in hdr
 
     def qi(d, k):
         try:
             return int(float(d.get(k) or 0))
         except (ValueError, TypeError):
             return 0
-    out = []
+
+    agg = {}
     for ln in lines[1:]:
         d = dict(zip(hdr, ln.split("\t")))
-        out.append({
-            "sku": d.get("sku", ""), "asin": d.get("asin", ""),
-            "name": (d.get("product-name") or "")[:60],
-            "available": qi(d, "afn-fulfillable-quantity"),
-            "reserved": qi(d, "afn-reserved-quantity"),
-            "inbound": (qi(d, "afn-inbound-working-quantity") + qi(d, "afn-inbound-shipped-quantity")
-                        + qi(d, "afn-inbound-receiving-quantity")),
-            "total": qi(d, "afn-total-quantity"),
-        })
+        sku = d.get("sku") or d.get("seller-sku") or ""
+        asin = d.get("asin", "")
+        key = (sku, asin)
+        avail = qi(d, "afn-fulfillable-quantity") if has_detail else qi(d, "Quantity Available")
+        if key not in agg:
+            agg[key] = {
+                "sku": sku, "asin": asin,
+                "name": (d.get("product-name") or "")[:60],
+                "available": 0,
+                "reserved": 0 if has_detail else None,
+                "inbound": 0 if has_detail else None,
+                "total": 0 if has_detail else None,
+            }
+        r = agg[key]
+        r["available"] += avail
+        if has_detail:
+            r["reserved"] += qi(d, "afn-reserved-quantity")
+            r["inbound"] += (qi(d, "afn-inbound-working-quantity") + qi(d, "afn-inbound-shipped-quantity")
+                             + qi(d, "afn-inbound-receiving-quantity"))
+            r["total"] += qi(d, "afn-total-quantity")
+    out = list(agg.values())
     out.sort(key=lambda x: x["available"])
     return out
 

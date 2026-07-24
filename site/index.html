@@ -330,18 +330,21 @@ function renderProducts(){
     : `<tr><td colspan="8" style="text-align:center;color:var(--muted-fg)">상품 데이터 없음</td></tr>`;
 }
 function renderInventory(){
+  const nz=v=>v==null?"-":int(v);
   const low=INV.filter(i=>i.available<LOW_STOCK).length, avail=INV.reduce((x,i)=>x+i.available,0);
+  const inbSum=INV.some(i=>i.inbound!=null)?INV.reduce((x,i)=>x+(i.inbound||0),0):null;
+  const oos=INV.filter(i=>i.available===0).length;
   kpiCards("kpisInv",[
     ["SKU 수", int(INV.length)+"개", ""],
+    ["품절 SKU", int(oos)+"개", "가용 0"],
     ["저재고 SKU", int(low)+"개", `가용 ${LOW_STOCK}개 미만`],
-    ["총 가용 재고", int(avail)+"개", ""],
-    ["입고중", int(INV.reduce((x,i)=>x+i.inbound,0))+"개", ""],
+    ["총 가용 재고", int(avail)+"개", inbSum==null?"입고중 정보 없음":`입고중 ${int(inbSum)}개`],
   ]);
   document.getElementById("invNote").textContent = INV.length ? `· ${INV.length} SKU · 가용 적은 순` : "";
   document.getElementById("invBody").innerHTML = INV.length ? INV.map(i=>
     `<tr><td>${i.sku}</td><td>${i.asin}</td><td>${i.name||"-"}</td>
      <td${i.available<LOW_STOCK?' class="low"':''}>${int(i.available)}</td>
-     <td>${int(i.reserved)}</td><td>${int(i.inbound)}</td><td>${int(i.total)}</td></tr>`).join("")
+     <td>${nz(i.reserved)}</td><td>${nz(i.inbound)}</td><td>${nz(i.total)}</td></tr>`).join("")
     : `<tr><td colspan="7" style="text-align:center;color:var(--muted-fg)">재고 데이터 없음 (FBA 재고 수집 대기중)</td></tr>`;
 }
 
