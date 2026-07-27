@@ -161,8 +161,8 @@
       <div class="actions">
         <span class="badge" id="updated"></span>
         <div class="seg" id="seg">
-          <button data-g="daily">일</button><button data-g="weekly">주</button>
-          <button data-g="monthly" class="on">월</button><button data-g="quarterly">분기</button>
+          <button data-g="daily" class="on">일</button><button data-g="weekly">주</button>
+          <button data-g="monthly">월</button><button data-g="quarterly">분기</button>
           <button data-g="yearly">년</button>
         </div>
         <a class="btn" id="scLink" target="_blank" rel="noopener">셀러센트럴</a>
@@ -245,7 +245,7 @@ const money0=n=>"$"+n.toLocaleString(undefined,{maximumFractionDigits:0});
 const int=n=>n.toLocaleString();
 const css=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 
-let S=[], P=[], INV=[], curGran="monthly", months=[], monthIdx=0;
+let S=[], P=[], INV=[], curGran="daily", months=[], monthIdx=0;
 const LOW_STOCK=10;
 
 // ---- 기간 집계 ----
