@@ -40,6 +40,8 @@
     background:transparent;color:var(--muted-fg);font-size:14px;padding:9px 10px;border-radius:9px;font-weight:500}
   .nav button:hover{background:var(--muted);color:var(--fg)}
   .nav button.active{background:var(--muted);color:var(--fg);font-weight:600}
+  .nav button.navcta{background:var(--muted);border:1px solid var(--border);color:var(--fg);font-weight:600}
+  .nav button.navcta:hover{background:var(--border)}
   .nav button svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;
     stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
   .side-foot{margin-top:auto;padding:10px 8px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted-fg)}
@@ -159,6 +161,9 @@
       <button data-view="daily">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         날짜별 데이터</button>
+      <button data-view="insights" class="navcta">
+        <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.5.4.8 1 .8 1.6V17h6.4v-.7c0-.6.3-1.2.8-1.6A7 7 0 0 0 12 2z"/></svg>
+        인사이트</button>
     </div>
     <div class="side-foot" id="foot"></div>
   </aside>
@@ -238,6 +243,22 @@
         </table></div>
       </div>
     </section>
+    <section class="view" data-view="insights">
+      <div class="grid2">
+        <div class="card chartcard"><h3>세션 · 전환율</h3><div class="cap">유입량(막대) 대비 전환율(선)</div>
+          <div class="canwrap sm"><canvas id="cSesConv"></canvas></div></div>
+        <div class="card chartcard"><h3>바이박스 · 전환율</h3><div class="cap">바이박스 점유율과 전환율 상관</div>
+          <div class="canwrap sm"><canvas id="cBbConv"></canvas></div></div>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <div class="card chartcard"><h3>객단가 (AOV)</h3><div class="cap">주문당 평균 매출 = 매출÷주문</div>
+          <div class="canwrap sm"><canvas id="cAov"></canvas></div></div>
+        <div class="card chartcard"><h3>환불률</h3><div class="cap">환불수량÷판매수량 (%)</div>
+          <div class="canwrap sm"><canvas id="cRefund"></canvas></div></div>
+      </div>
+      <div class="card chartcard" style="margin-top:12px"><h3>누적 매출</h3><div class="cap">기간 러닝 합계</div>
+        <div class="canwrap sm"><canvas id="cCumSales"></canvas></div></div>
+    </section>
   </main>
 </div>
 
@@ -279,12 +300,12 @@ function aggregate(g){
   const map=new Map();
   for(const r of src){
     const k=bkey(r.date,g);
-    if(!map.has(k)) map.set(k,{key:k,sales:0,sessions:0,units:0,items:0,pageViews:0,bbSum:0,n:0});
+    if(!map.has(k)) map.set(k,{key:k,sales:0,sessions:0,units:0,items:0,pageViews:0,bbSum:0,n:0,refunded:0});
     const b=map.get(k);
     b.sales+=r.sales; b.sessions+=r.sessions; b.units+=r.units; b.items+=r.items;
-    b.pageViews+=r.pageViews; b.bbSum+=r.buybox; b.n++;
+    b.pageViews+=r.pageViews; b.bbSum+=r.buybox; b.refunded+=(r.refunded||0); b.n++;
   }
-  return [...map.values()].map(b=>({...b, conv:b.sessions?b.units/b.sessions*100:0, buybox:b.n?b.bbSum/b.n:0}));
+  return [...map.values()].map(b=>({...b, conv:b.sessions?b.units/b.sessions*100:0, buybox:b.n?b.bbSum/b.n:0, refundPct:b.units?b.refunded/b.units*100:0, aov:b.items?b.sales/b.items:0}));
 }
 const GLABEL={daily:"최근 90일 · 일별",weekly:"주별",monthly:"월별",quarterly:"분기별",yearly:"연도별"};
 
@@ -325,9 +346,33 @@ const CHARTS={
     {type:"line",label:"전환(판매수량)",data:a.map(b=>b.units),borderColor:css("--c-buybox"),tension:.3,pointRadius:pt(curGran),yAxisID:"y1"}]},
     options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
       y1:{position:"right",grid:{display:false},beginAtZero:true,ticks:{color:css("--muted-fg"),precision:0}}}}}),
+  cSesConv:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
+    {type:"bar",label:"세션",data:a.map(b=>b.sessions),backgroundColor:css("--c-pv")+"80",borderRadius:4,yAxisID:"y"},
+    {type:"line",label:"전환율 %",data:a.map(b=>b.conv),borderColor:css("--c-conv"),tension:.3,pointRadius:pt(curGran),yAxisID:"y1"}]},
+    options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
+      y1:{position:"right",grid:{display:false},beginAtZero:true,ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}}),
+  cBbConv:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
+    {type:"line",label:"바이박스 %",data:a.map(b=>b.buybox),borderColor:css("--c-buybox"),tension:.3,pointRadius:pt(curGran),yAxisID:"y"},
+    {type:"line",label:"전환율 %",data:a.map(b=>b.conv),borderColor:css("--c-conv"),tension:.3,pointRadius:pt(curGran),yAxisID:"y1"}]},
+    options:{scales:{x:xs(),y:{position:"left",grid:grid(),ticks:{color:css("--muted-fg"),callback:v=>v+"%"}},
+      y1:{position:"right",grid:{display:false},beginAtZero:true,ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}}),
+  cAov:(a)=>({type:"line",data:{labels:a.map(b=>b.key),datasets:[
+    {label:"객단가($)",data:a.map(b=>b.aov),borderColor:css("--c-sales"),backgroundColor:css("--c-sales")+"80",fill:true,tension:.3,pointRadius:pt(curGran)}]},
+    options:{plugins:{legend:{display:false}},scales:{x:xs(),y:{grid:grid(),beginAtZero:true,ticks:{color:css("--muted-fg"),callback:v=>"$"+v}}}}}),
+  cRefund:(a)=>({type:"line",data:{labels:a.map(b=>b.key),datasets:[
+    {label:"환불률 %",data:a.map(b=>b.refundPct),borderColor:css("--c-sessions"),backgroundColor:css("--c-sessions")+"80",fill:true,tension:.3,pointRadius:pt(curGran)}]},
+    options:{plugins:{legend:{display:false}},scales:{x:xs(),y:{grid:grid(),beginAtZero:true,ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}}),
+  cCumSales:(a)=>{let acc=0;const cum=a.map(b=>acc+=b.sales);return({type:"line",data:{labels:a.map(b=>b.key),datasets:[
+    {label:"누적 매출($)",data:cum,borderColor:css("--c-sales"),backgroundColor:css("--c-sales")+"80",fill:true,tension:.2,pointRadius:pt(curGran)}]},
+    options:{plugins:{legend:{display:false}},scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}}}}});},
 };
 const CHART_INFO={
   cMain:"막대=상품매출($), 선=방문 세션 수. 세션은 느는데 매출이 안 따라오면 전환율·가격·재고를 점검하세요.",
+  cSesConv:"세션(막대) 대비 전환율(선). 세션이 늘어도 전환율이 떨어지면 유입 품질/관련성 저하 — 키워드·타겟팅 점검.",
+  cBbConv:"바이박스 점유율과 전환율. 바이박스를 뺏기면 구매버튼이 경쟁자에게 가서 전환이 같이 떨어지는지 확인.",
+  cAov:"객단가(AOV)=매출÷주문. 오르면 번들·업셀·가격 인상 효과, 내리면 저가 위주 판매.",
+  cRefund:"환불률=환불수량÷판매수량. 급등하면 품질·상세페이지 오해·사이즈 문제 등 조기 경보.",
+  cCumSales:"기간 누적 매출(러닝 합계). 목표 대비 진척과 성장 기울기를 한눈에.",
   cConv:"세션 대비 구매 전환 비율(Unit Session %). 낮을수록 상세페이지·가격·리뷰 개선 여지. 세션이 적은 날엔 값이 크게 튈 수 있어요.",
   cBuybox:"구매 버튼(Buy Box) 점유율. 100% 미만이면 그만큼 경쟁 셀러에게 판매를 뺏기는 중 — 가격·재고·계정 건강 점검.",
   cTraffic:"페이지뷰=총 조회 수, 세션=방문자 단위. 페이지뷰가 세션보다 훨씬 크면 한 방문에 여러 번 본다는 뜻(비교·재방문).",
@@ -350,7 +395,7 @@ function drawChart(id){
   const cap=document.getElementById("capMain");
   if(cap) cap.textContent=`상품매출(막대)·세션(선) — ${GLABEL[curGran]} · ${a.length}구간`;
 }
-const VIEW_CHARTS={overview:["cMain"],traffic:["cConv","cBuybox","cTraffic","cPvConv"],daily:[],products:[],inventory:[]};
+const VIEW_CHARTS={overview:["cMain"],traffic:["cConv","cBuybox","cTraffic","cPvConv"],daily:[],products:[],inventory:[],insights:["cSesConv","cBbConv","cAov","cRefund","cCumSales"]};
 function buildView(v){
   VIEW_CHARTS[v].forEach(id=>{ if(!Chart.getChart(id)) drawChart(id); });
   if(v==="daily") renderMonth();
@@ -452,7 +497,7 @@ document.getElementById("seg").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b)return;
   curGran=b.dataset.g;
   document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));
-  ["cMain","cConv","cBuybox","cTraffic","cPvConv"].forEach(id=>{ if(Chart.getChart(id)) drawChart(id); });
+  ["cMain","cConv","cBuybox","cTraffic","cPvConv","cSesConv","cBbConv","cAov","cRefund","cCumSales"].forEach(id=>{ if(Chart.getChart(id)) drawChart(id); });
 });
 document.getElementById("prevM").addEventListener("click",()=>{ if(monthIdx>0){monthIdx--; renderMonth();} });
 document.getElementById("nextM").addEventListener("click",()=>{ if(monthIdx<months.length-1){monthIdx++; renderMonth();} });
