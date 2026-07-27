@@ -187,6 +187,8 @@
       </div>
       <div class="card chartcard" style="margin-top:12px"><h3>페이지뷰 · 세션</h3><div class="cap">트래픽 유입 추이</div>
         <div class="canwrap sm"><canvas id="cTraffic"></canvas></div></div>
+      <div class="card chartcard" style="margin-top:12px"><h3>페이지뷰 · 전환(판매)</h3><div class="cap">유입(막대) 대비 실제 전환 판매수량(선)</div>
+        <div class="canwrap sm"><canvas id="cPvConv"></canvas></div></div>
     </section>
 
     <section class="view" data-view="daily">
@@ -310,6 +312,11 @@ const CHARTS={
     {type:"line",label:"페이지뷰",data:a.map(b=>b.pageViews),borderColor:css("--c-pv"),backgroundColor:css("--c-pv")+"22",fill:true,tension:.3,pointRadius:pt(curGran)},
     {type:"line",label:"세션",data:a.map(b=>b.sessions),borderColor:css("--c-sessions"),tension:.3,pointRadius:pt(curGran)}]},
     options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}}}}}),
+  cPvConv:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
+    {type:"bar",label:"페이지뷰",data:a.map(b=>b.pageViews),backgroundColor:css("--c-pv"),borderRadius:4,yAxisID:"y"},
+    {type:"line",label:"전환(판매수량)",data:a.map(b=>b.units),borderColor:css("--c-buybox"),tension:.3,pointRadius:pt(curGran),yAxisID:"y1"}]},
+    options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
+      y1:{position:"right",grid:{display:false},beginAtZero:true,ticks:{color:css("--muted-fg"),precision:0}}}}}),
 };
 function drawChart(id){
   const a=aggregate(curGran);
@@ -318,7 +325,7 @@ function drawChart(id){
   const cap=document.getElementById("capMain");
   if(cap) cap.textContent=`상품매출(막대)·세션(선) — ${GLABEL[curGran]} · ${a.length}구간`;
 }
-const VIEW_CHARTS={overview:["cMain"],traffic:["cConv","cBuybox","cTraffic"],daily:[],products:[],inventory:[]};
+const VIEW_CHARTS={overview:["cMain"],traffic:["cConv","cBuybox","cTraffic","cPvConv"],daily:[],products:[],inventory:[]};
 function buildView(v){
   VIEW_CHARTS[v].forEach(id=>{ if(!Chart.getChart(id)) drawChart(id); });
   if(v==="daily") renderMonth();
@@ -419,7 +426,7 @@ document.getElementById("seg").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b)return;
   curGran=b.dataset.g;
   document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));
-  ["cMain","cConv","cBuybox","cTraffic"].forEach(id=>{ if(Chart.getChart(id)) drawChart(id); });
+  ["cMain","cConv","cBuybox","cTraffic","cPvConv"].forEach(id=>{ if(Chart.getChart(id)) drawChart(id); });
 });
 document.getElementById("prevM").addEventListener("click",()=>{ if(monthIdx>0){monthIdx--; renderMonth();} });
 document.getElementById("nextM").addEventListener("click",()=>{ if(monthIdx<months.length-1){monthIdx++; renderMonth();} });
