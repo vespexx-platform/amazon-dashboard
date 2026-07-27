@@ -89,6 +89,14 @@
   td.namecell{white-space:normal;min-width:200px;max-width:320px}
   td.namecell>div{line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   @media (max-width:560px){ td.namecell{min-width:150px;max-width:220px} td.namecell>div{-webkit-line-clamp:2} }
+  .chartcard{position:relative}
+  .info{position:absolute;top:14px;right:14px;color:var(--muted-fg);cursor:help;line-height:0}
+  .info svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+  .info:hover,.info:focus{color:var(--fg);outline:none}
+  .info .tip{display:none;position:absolute;right:0;top:22px;width:min(260px,78vw);text-align:left;
+    background:#0b0d12;color:#e7ebf2;font-size:12px;font-weight:400;line-height:1.55;
+    padding:10px 12px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:15}
+  .info:hover .tip,.info:focus .tip{display:block}
   .view{display:none} .view.active{display:block}
 
   @media (max-width:900px){
@@ -297,27 +305,44 @@ const pt=g=>g==="daily"?1.5:2.5;
 
 const CHARTS={
   cMain:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
-    {type:"bar",label:"매출($)",data:a.map(b=>b.sales),backgroundColor:css("--c-sales"),borderRadius:4,yAxisID:"y"},
+    {type:"bar",label:"매출($)",data:a.map(b=>b.sales),backgroundColor:css("--c-sales")+"80",borderRadius:4,yAxisID:"y"},
     {type:"line",label:"세션",data:a.map(b=>b.sessions),borderColor:css("--c-sessions"),tension:.3,pointRadius:pt(curGran),yAxisID:"y1"}]},
     options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
       y1:{position:"right",grid:{display:false},ticks:{color:css("--muted-fg")}}}}}),
   cConv:(a)=>({type:"line",data:{labels:a.map(b=>b.key),datasets:[
-    {label:"전환율 %",data:a.map(b=>b.conv),borderColor:css("--c-conv"),backgroundColor:css("--c-conv")+"22",fill:true,tension:.3,pointRadius:pt(curGran)}]},
+    {label:"전환율 %",data:a.map(b=>b.conv),borderColor:css("--c-conv"),backgroundColor:css("--c-conv")+"80",fill:true,tension:.3,pointRadius:pt(curGran)}]},
     options:{plugins:{legend:{display:false}},scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}}),
   cBuybox:(a)=>({type:"line",data:{labels:a.map(b=>b.key),datasets:[
-    {label:"바이박스 %",data:a.map(b=>b.buybox),borderColor:css("--c-buybox"),backgroundColor:css("--c-buybox")+"22",fill:true,tension:.3,pointRadius:pt(curGran)}]},
+    {label:"바이박스 %",data:a.map(b=>b.buybox),borderColor:css("--c-buybox"),backgroundColor:css("--c-buybox")+"80",fill:true,tension:.3,pointRadius:pt(curGran)}]},
     options:{plugins:{legend:{display:false}},scales:{x:xs(),
       y:{grid:grid(),suggestedMin:Math.max(0,Math.min(...a.map(b=>b.buybox))-2),suggestedMax:100,ticks:{color:css("--muted-fg"),callback:v=>v+"%"}}}}}),
   cTraffic:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
-    {type:"line",label:"페이지뷰",data:a.map(b=>b.pageViews),borderColor:css("--c-pv"),backgroundColor:css("--c-pv")+"22",fill:true,tension:.3,pointRadius:pt(curGran)},
+    {type:"line",label:"페이지뷰",data:a.map(b=>b.pageViews),borderColor:css("--c-pv"),backgroundColor:css("--c-pv")+"80",fill:true,tension:.3,pointRadius:pt(curGran)},
     {type:"line",label:"세션",data:a.map(b=>b.sessions),borderColor:css("--c-sessions"),tension:.3,pointRadius:pt(curGran)}]},
     options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}}}}}),
   cPvConv:(a)=>({data:{labels:a.map(b=>b.key),datasets:[
-    {type:"bar",label:"페이지뷰",data:a.map(b=>b.pageViews),backgroundColor:css("--c-pv"),borderRadius:4,yAxisID:"y"},
+    {type:"bar",label:"페이지뷰",data:a.map(b=>b.pageViews),backgroundColor:css("--c-pv")+"80",borderRadius:4,yAxisID:"y"},
     {type:"line",label:"전환(판매수량)",data:a.map(b=>b.units),borderColor:css("--c-buybox"),tension:.3,pointRadius:pt(curGran),yAxisID:"y1"}]},
     options:{scales:{x:xs(),y:{grid:grid(),ticks:{color:css("--muted-fg")}},
       y1:{position:"right",grid:{display:false},beginAtZero:true,ticks:{color:css("--muted-fg"),precision:0}}}}}),
 };
+const CHART_INFO={
+  cMain:"막대=상품매출($), 선=방문 세션 수. 세션은 느는데 매출이 안 따라오면 전환율·가격·재고를 점검하세요.",
+  cConv:"세션 대비 구매 전환 비율(Unit Session %). 낮을수록 상세페이지·가격·리뷰 개선 여지. 세션이 적은 날엔 값이 크게 튈 수 있어요.",
+  cBuybox:"구매 버튼(Buy Box) 점유율. 100% 미만이면 그만큼 경쟁 셀러에게 판매를 뺏기는 중 — 가격·재고·계정 건강 점검.",
+  cTraffic:"페이지뷰=총 조회 수, 세션=방문자 단위. 페이지뷰가 세션보다 훨씬 크면 한 방문에 여러 번 본다는 뜻(비교·재방문).",
+  cPvConv:"막대=유입(페이지뷰), 선=실제 판매수량. 유입은 느는데 선이 안 따라오면 전환 병목 — 이미지·가격·리뷰·품절 확인.",
+};
+function injectInfoIcons(){
+  const ic='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+  for(const id in CHART_INFO){
+    const cv=document.getElementById(id); if(!cv) continue;
+    const card=cv.closest(".chartcard"); if(!card||card.querySelector(".info")) continue;
+    const sp=document.createElement("span"); sp.className="info"; sp.tabIndex=0;
+    sp.innerHTML=ic+'<span class="tip">'+CHART_INFO[id]+'</span>';
+    card.appendChild(sp);
+  }
+}
 function drawChart(id){
   const a=aggregate(curGran);
   const old=Chart.getChart(id); if(old) old.destroy();
@@ -408,6 +433,7 @@ function render(data){
   document.getElementById("scLink").href="https://sellercentral.amazon.com/business-reports";
   months=[...new Set(S.map(r=>r.date.slice(0,7)))].sort();
   monthIdx=months.length-1;
+  injectInfoIcons();
   renderKPIs();
   buildView("overview");
 }
