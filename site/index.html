@@ -325,6 +325,11 @@ function chartDefaults(){
   Chart.defaults.plugins.tooltip.padding=10; Chart.defaults.plugins.tooltip.cornerRadius=8;
   Chart.defaults.plugins.tooltip.titleColor="#fff"; Chart.defaults.plugins.tooltip.bodyColor="#cbd3e1";
   Chart.defaults.maintainAspectRatio=false;
+  // 마우스를 정확히 point 위에 올리지 않아도 가장 가까운 x지점 툴팁을 표시
+  Chart.defaults.interaction.mode="index";
+  Chart.defaults.interaction.intersect=false;
+  Chart.defaults.plugins.tooltip.mode="index";
+  Chart.defaults.plugins.tooltip.intersect=false;
 }
 const grid=()=>({color:css("--border"),drawTicks:false});
 const xs=()=>({grid:{display:false},ticks:{color:css("--muted-fg"),maxRotation:0,autoSkip:true,maxTicksLimit:12}});
