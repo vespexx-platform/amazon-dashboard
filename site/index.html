@@ -9,14 +9,14 @@
 <style>
   :root{
     --bg:#f6f7f8; --sidebar:#ffffff; --card:#ffffff; --fg:#111418; --muted:#f2f3f5;
-    --muted-fg:#6b7280; --border:#e5e7eb; --primary:#18181b; --primary-fg:#ffffff;
+    --muted-fg:#6b7280; --info-fg:#c2c7cf; --border:#e5e7eb; --primary:#18181b; --primary-fg:#ffffff;
     --ring:rgba(0,0,0,.14);
     --c-sales:#4f46e5; --c-sessions:#f43f5e; --c-conv:#0ea5e9; --c-buybox:#16a34a; --c-pv:#a855f7;
     --r:12px;
   }
   @media (prefers-color-scheme:dark){
     :root{ --bg:#0a0b0d; --sidebar:#0e0f12; --card:#141517; --fg:#e9eaec; --muted:#1a1b1f;
-      --muted-fg:#9096a0; --border:#26282d; --primary:#e9eaec; --primary-fg:#0a0b0d;
+      --muted-fg:#9096a0; --info-fg:#4a4e56; --border:#26282d; --primary:#e9eaec; --primary-fg:#0a0b0d;
       --ring:rgba(255,255,255,.16);
       --c-sales:#818cf8; --c-sessions:#fb7185; --c-conv:#38bdf8; --c-buybox:#4ade80; --c-pv:#c084fc; }
   }
@@ -90,9 +90,9 @@
   td.namecell>div{line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   @media (max-width:560px){ td.namecell{min-width:150px;max-width:220px} td.namecell>div{-webkit-line-clamp:2} }
   .chartcard{position:relative}
-  .info{position:absolute;top:13px;right:13px;color:var(--muted-fg);cursor:help;line-height:0}
+  .info{position:absolute;top:13px;right:13px;color:var(--info-fg);cursor:help;line-height:0}
   .info svg{width:18px;height:18px;fill:currentColor;stroke:none}
-  .info:hover,.info:focus{color:var(--fg);outline:none}
+  .info:hover,.info:focus{color:var(--muted-fg);outline:none}
   .info .tip{display:none;position:absolute;right:0;top:26px;width:min(260px,78vw);text-align:left;
     background:#0b0d12;color:#e7ebf2;font-size:12px;font-weight:400;line-height:1.55;
     padding:10px 12px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:15}
@@ -119,8 +119,13 @@
   .gate{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:30px;width:330px;max-width:90vw;text-align:center}
   .gate .logo{width:40px;height:40px;border-radius:11px;margin:0 auto 14px;background:var(--primary);display:grid;place-items:center;color:var(--primary-fg);font-weight:800}
   .gate h2{margin:0 0 4px;font-size:17px} .gate p{color:var(--muted-fg);font-size:13px;margin:0 0 18px}
-  .gate input{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:15px;outline:none}
+  .pwwrap{position:relative}
+  .gate input{width:100%;padding:11px 42px 11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:15px;outline:none}
   .gate input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--ring)}
+  .gate .eye{position:absolute;top:50%;right:5px;transform:translateY(-50%);width:auto;margin:0;padding:6px;
+    background:transparent;color:var(--muted-fg);border:none;border-radius:8px;cursor:pointer;line-height:0}
+  .gate .eye:hover{color:var(--fg);background:var(--muted)}
+  .gate .eye svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
   .gate button{width:100%;margin-top:11px;padding:11px;border:none;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-size:15px;font-weight:650;cursor:pointer}
   .err{color:var(--c-sessions);font-size:13px;min-height:18px;margin-top:9px}
   #shell{display:none}
@@ -133,7 +138,10 @@
     <div class="logo">a</div>
     <h2>Amazon 판매 대시보드</h2>
     <p>비밀번호를 입력하세요</p>
-    <input type="password" id="pw" autocomplete="current-password" autofocus>
+    <div class="pwwrap">
+      <input type="password" id="pw" autocomplete="current-password" placeholder="비밀번호" autofocus>
+      <button type="button" class="eye" id="eye" aria-label="비밀번호 표시"></button>
+    </div>
     <button type="submit">열기</button>
     <div class="err" id="err"></div>
   </form>
@@ -500,15 +508,34 @@ document.getElementById("seg").addEventListener("click",e=>{
 document.getElementById("prevM").addEventListener("click",()=>{ if(monthIdx>0){monthIdx--; renderMonth();} });
 document.getElementById("nextM").addEventListener("click",()=>{ if(monthIdx<months.length-1){monthIdx++; renderMonth();} });
 
+// 비밀번호 표시/숨김 토글
+const EYE_ON='<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF='<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+const eyeBtn=document.getElementById("eye"); eyeBtn.innerHTML=EYE_ON;
+eyeBtn.addEventListener("click",()=>{
+  const pw=document.getElementById("pw"); const show=pw.type==="password";
+  pw.type=show?"text":"password"; eyeBtn.innerHTML=show?EYE_OFF:EYE_ON; pw.focus();
+});
+
+// 1시간 세션 기억(복호화 비번을 브라우저 localStorage에 만료시각과 함께 보관)
+const SKEY="dash_sess", SESS_TTL=60*60*1000;
+function saveSession(pw){ try{ localStorage.setItem(SKEY, JSON.stringify({pw, exp:Date.now()+SESS_TTL})); }catch(_){} }
+function readSession(){ try{ const s=JSON.parse(localStorage.getItem(SKEY)||"null"); if(s&&s.exp>Date.now()) return s.pw; localStorage.removeItem(SKEY); }catch(_){} return null; }
+function openDash(data){
+  document.getElementById("overlay").style.display="none";
+  document.getElementById("shell").style.display="grid";
+  render(data);
+}
+
 document.getElementById("gate").addEventListener("submit",async e=>{
   e.preventDefault();
   const err=document.getElementById("err"); err.textContent="";
   try{
     const enc=await (window.__ENC_READY__||Promise.resolve(window.__ENC__));
-    const data=await decrypt(enc, document.getElementById("pw").value);
-    document.getElementById("overlay").style.display="none";
-    document.getElementById("shell").style.display="grid";
-    render(data);
+    const pw=document.getElementById("pw").value;
+    const data=await decrypt(enc, pw);
+    saveSession(pw);
+    openDash(data);
   }catch(_){ err.textContent="비밀번호가 올바르지 않습니다"; }
 });
 </script>
@@ -521,6 +548,13 @@ window.__ENC_READY__ = new Promise((resolve, reject) => {
   s.onerror = () => reject(new Error("data.js 로드 실패"));
   document.head.appendChild(s);
 });
+
+// 유효한 세션이 있으면 게이트 없이 자동 로그인(1시간)
+(async () => {
+  const pw = readSession(); if(!pw) return;
+  try{ const enc = await window.__ENC_READY__; openDash(await decrypt(enc, pw)); }
+  catch(_){ try{ localStorage.removeItem(SKEY); }catch(e){} }
+})();
 </script>
 </body>
 </html>
