@@ -90,11 +90,10 @@
   td.namecell>div{line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   @media (max-width:560px){ td.namecell{min-width:150px;max-width:220px} td.namecell>div{-webkit-line-clamp:2} }
   .chartcard{position:relative}
-  .info{position:absolute;top:12px;right:12px;color:var(--muted-fg);cursor:help;line-height:0;
-    background:var(--muted);border:1px solid var(--border);border-radius:7px;padding:5px}
-  .info svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
-  .info:hover,.info:focus{color:var(--fg);background:var(--border);outline:none}
-  .info .tip{display:none;position:absolute;right:0;top:32px;width:min(260px,78vw);text-align:left;
+  .info{position:absolute;top:13px;right:13px;color:var(--muted-fg);cursor:help;line-height:0}
+  .info svg{width:18px;height:18px;fill:currentColor;stroke:none}
+  .info:hover,.info:focus{color:var(--fg);outline:none}
+  .info .tip{display:none;position:absolute;right:0;top:26px;width:min(260px,78vw);text-align:left;
     background:#0b0d12;color:#e7ebf2;font-size:12px;font-weight:400;line-height:1.55;
     padding:10px 12px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:15}
   .info:hover .tip,.info:focus .tip{display:block}
@@ -378,7 +377,7 @@ const CHART_INFO={
   cPvConv:"막대=유입(페이지뷰), 선=실제 판매수량. 유입은 느는데 선이 안 따라오면 전환 병목 — 이미지·가격·리뷰·품절 확인.",
 };
 function injectInfoIcons(){
-  const ic='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+  const ic='<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm-1-15h2v2h-2V7zm0 4h2v6h-2v-6z"/></svg>';
   for(const id in CHART_INFO){
     const cv=document.getElementById(id); if(!cv) continue;
     const card=cv.closest(".chartcard"); if(!card||card.querySelector(".info")) continue;
